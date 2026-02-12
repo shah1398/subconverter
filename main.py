@@ -1,89 +1,67 @@
-import os
 import base64
 import requests
+import os
 
+# فایل ورودی و خروجی
 INPUT_FILE = "input.txt"
-OUTPUT_FILE = "output/clash-meta.yaml"
+OUTPUT_FILE = "output/base64.txt"
 
-def read_links():
-    """
-    خواندن لینک‌ها از فایل input.txt
-    """
-    if not os.path.exists(INPUT_FILE):
-        print(f"[Error] فایل ورودی یافت نشد: {INPUT_FILE}")
+def read_links(file_path=INPUT_FILE):
+    """خواندن لینک‌ها از فایل ورودی"""
+    if not os.path.exists(file_path):
+        print(f"[Error] فایل لینک موجود نیست: {file_path}")
         return []
-    with open(INPUT_FILE, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip()]
 
-def fetch_sub(url):
-    """
-    دریافت ساب از لینک‌ها
-    """
+def fetch_content(url, timeout=10):
+    """دریافت محتوا از URL و تبدیل به Base64"""
     try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        return response.text
-    except requests.RequestException as e:
-        print(f"[Error] دریافت لینک {url} با خطا مواجه شد: {e}")
+        resp = requests.get(url, timeout=timeout)
+        resp.raise_for_status()
+        content = resp.text.strip()
+        try:
+            return base64.b64decode(content).decode("utf-8")
+        except Exception:
+            return content  # در صورتی که تبدیل به Base64 نشد، محتوای خام برمی‌گردد
+    except Exception as e:
+        print(f"[Error] {url} -> {e}")
         return ""
 
-def decode_sub(content):
-    """
-    دیکد کردن ساب (بر اساس base64 یا بدون آن)
-    """
-    try:
-        # ابتدا سعی می‌کنیم که محتوا را base64 decode کنیم
-        return base64.b64decode(content).decode("utf-8")
-    except Exception:
-        return content  # اگر decode نشد، همان محتوا را برمی‌گردانیم
+def merge_and_deduplicate(contents):
+    """ادغام محتوا و حذف خطوط تکراری"""
+    lines = []
+    for c in contents:
+        lines.extend(c.splitlines())
+    unique_lines = list(dict.fromkeys([line.strip() for line in lines if line.strip()]))
+    return "\n".join(unique_lines)
 
-def to_yaml(subs):
-    """
-    تبدیل داده‌ها به فرمت YAML
-    """
-    yaml_content = "proxies:\n"
-    for i, sub in enumerate(subs):
-        decoded = decode_sub(sub)
-        yaml_content += f"  - name: node{i}\n    server: {decoded}\n"
-    
-    # تعریف پروکسی گروپ‌ها و قوانین برای استفاده در Clash Meta
-    yaml_content += "proxy-groups:\n"
-    yaml_content += "  - name: Auto\n    type: select\n    proxies:\n"
-    for i in range(len(subs)):
-        yaml_content += f"      - node{i}\n"
-    
-    # قوانین ساده برای انتخاب پروکسی
-    yaml_content += "rules:\n"
-    yaml_content += "  - DOMAIN-SUFFIX,example.com,Auto\n"
-    yaml_content += "  - GEOIP,CN,Auto\n"
-    yaml_content += "  - MATCH,Auto\n"
-    
-    return yaml_content
+def encode_base64(data):
+    """کد کردن داده‌ها به Base64"""
+    return base64.b64encode(data.encode("utf-8")).decode("utf-8")
 
-def main():
-    """
-    اجرای فرآیند پردازش
-    """
-    os.makedirs("output", exist_ok=True)
+def clear_output(file_path=OUTPUT_FILE):
+    """پاک کردن فایل خروجی قبلی"""
+    if os.path.exists(file_path):
+        open(file_path, "w", encoding="utf-8").close()
+        print(f"[Info] فایل خروجی پاک شد: {file_path}")
+
+def run_task():
+    """اجرای پردازش‌ها"""
     print("[Info] شروع پردازش...")
-    
-    # خواندن لینک‌ها
-    links = read_links()
+    clear_output()  # پاک کردن فایل خروجی قبل از هر پردازش
+    links = read_links()  # خواندن لینک‌ها از فایل ورودی
     if not links:
-        print("[Warning] هیچ لینکی برای پردازش یافت نشد!")
+        print("[Warning] لینک برای پردازش موجود نیست!")
         return
-    
-    # دریافت ساب‌ها
-    subs = [fetch_sub(url) for url in links]
-    
-    # تبدیل به فرمت YAML
-    yaml_data = to_yaml(subs)
-    
-    # ذخیره خروجی در فایل
+
+    all_contents = [fetch_content(url) for url in links]  # دریافت محتوا از لینک‌ها
+    merged = merge_and_deduplicate(all_contents)  # ادغام و حذف تکرارها
+    b64_result = encode_base64(merged)  # تبدیل به Base64
+
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write(yaml_data)
-    
-    print(f"[Done] خروجی به فرمت Clash Meta ساخته شد: {OUTPUT_FILE}")
+        f.write(b64_result)  # ذخیره خروجی در فایل
+    print(f"[Done] خروجی ساخته شد: {OUTPUT_FILE}")
 
 if __name__ == "__main__":
-    main()
+    run_task()
