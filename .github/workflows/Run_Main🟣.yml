@@ -1,0 +1,36 @@
+name: Run Main
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"  # هر 3 ساعت اجرا می‌شود
+  workflow_dispatch:  # اجازه اجرای دستی از GitHub
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Clear output
+        run: |
+          rm -rf output && mkdir output
+
+      - name: Run main.py
+        run: |
+          python main.py
+
+      - name: List output
+        run: |
+          echo "Output files:"
+          ls -lah output/
