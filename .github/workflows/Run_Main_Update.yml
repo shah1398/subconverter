@@ -2,7 +2,7 @@ name: Run Main Update
 
 on:
   schedule:
-    - cron: "*/10 * * * *"  # هر 10 دقیقه یک بار اجرا می‌شود.
+    - cron: "0 */10 * * *"  # هر 10 دقیقه یک بار اجرا می‌شود.
   workflow_dispatch:
 
 jobs:
