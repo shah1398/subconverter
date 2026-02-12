@@ -2,7 +2,7 @@ name: Run Main
 
 on:
   schedule:
-    - cron: "0 */3 * * *"  # هر 3 ساعت اجرا می‌شود
+    - cron: "*/10 * * * *"  # هر 3 ساعت اجرا می‌شود
   workflow_dispatch:  # اجازه اجرای دستی از GitHub
 
 jobs:
