@@ -1,0 +1,40 @@
+name: Run Main Update
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"  # هر 10 دقیقه یک بار اجرا می‌شود.
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Clear previous outputs
+        run: |
+          if [ -d output ]; then rm -rf output; fi
+          mkdir -p output
+
+      - name: Run Main Update
+        run: |
+          SCRIPT_NAME="main.py"
+          echo "Running $SCRIPT_NAME"
+          python "$SCRIPT_NAME"
+
+      - name: List output files
+        run: |
+          echo "Output files:"
+          ls -lah output/
